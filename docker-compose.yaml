@@ -1,0 +1,394 @@
+version: '3.8'
+volumes:
+  mongodbdata-open5gs-5g: {}
+  mytb-data:
+    external: true
+  mytb-logs:
+    external: true
+networks:
+  open5gs:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/24
+          gateway: 172.21.0.1
+  ran:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.1.0/24
+          gateway: 172.21.1.1
+  gw1:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.2.0/24
+          gateway: 172.21.2.1
+  gw2:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.3.0/24
+          gateway: 172.21.3.1
+services:
+  mongodb:
+    container_name: "mongodb"
+    image: mongo:5
+    expose:
+    - "27017/tcp"
+    ports:
+    - "27017:27017"
+    volumes:
+    - mongodbdata-open5gs-5g:/var/lib/mongodb
+    - ./mongo:/var/lib/mongoscript
+    networks:
+      open5gs:
+        ipv4_address: 172.21.0.101
+  webui:
+      image: registry.gitlab.com/infinitydon/registry/open5gs-webui:v2.2.6
+      container_name: open5gs-webui
+      expose:
+      - "3000/tcp"
+      ports:
+      - "3000:3000"
+      depends_on:
+      - mongodb
+      environment:
+      - DB_URI=mongodb://mongodb/open5gs
+      - HOSTNAME=0.0.0.0
+      - NODE_ENV=production
+      networks:
+        open5gs:
+          ipv4_address: 172.21.0.103
+  open5gs-nrf:
+      container_name: "open5gs-nrf"
+      image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
+      command: ["open5gs-nrfd", "-c", "/open5gs/configs/nrf.yaml"]
+      volumes:
+      - ./config/nrf.yaml:/open5gs/configs/nrf.yaml
+      expose:
+      - "80/tcp"
+      networks:
+        open5gs:
+          ipv4_address: 172.21.0.100
+  open5gs-amf:
+      container_name: "open5gs-amf"
+      image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
+      privileged: true
+      command: >
+        sh -c  "ip route add 172.21.1.0/24 via 172.21.2.254 &&
+                open5gs-amfd -c /open5gs/configs/amf.yaml"
+      volumes:
+      - ./config/amf.yaml:/open5gs/configs/amf.yaml
+      expose:
+      - "38412/sctp"
+      - "80/tcp"
+      # ports:
+      # - "38412:38412/sctp"
+      depends_on:
+      - open5gs-nrf
+      networks:
+        open5gs:
+          ipv4_address: 172.21.0.104
+        gw1:
+          ipv4_address: 172.21.2.104
+  open5gs-udm:
+      container_name: "open5gs-udm"
+      image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
+      command: ["open5gs-udmd", "-c", "/open5gs/configs/udm.yaml"]
+      volumes:
+      - ./config/udm.yaml:/open5gs/configs/udm.yaml
+      expose:
+      - "80/tcp"
+      depends_on:
+      - open5gs-nrf
+      - open5gs-udr
+      networks:
+        open5gs:
+          ipv4_address: 172.21.0.105
+  open5gs-ausf:
+      container_name: "open5gs-ausf"
+      image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
+      command: ["open5gs-ausfd", "-c", "/open5gs/configs/ausf.yaml"]
+      volumes:
+      - ./config/ausf.yaml:/open5gs/configs/ausf.yaml
+      expose:
+      - "80/tcp"
+      depends_on:
+      - open5gs-nrf
+      - open5gs-udr
+      networks:
+        open5gs:
+          ipv4_address: 172.21.0.114
+  open5gs-udr:
+      container_name: "open5gs-udr"
+      image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
+      command: ["open5gs-udrd", "-c", "/open5gs/configs/udr.yaml"]
+      volumes:
+      - ./config/udr.yaml:/open5gs/configs/udr.yaml
+      depends_on:
+      - open5gs-nrf
+      - mongodb
+      expose:
+      - "80/tcp"
+      networks:
+        open5gs:
+          ipv4_address: 172.21.0.106
+  open5gs-smf:
+      container_name: "open5gs-smf"
+      image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
+      depends_on:
+      - open5gs-nrf
+      privileged: true
+      command: >
+        sh -c  "ip route add 172.21.3.0/24 via 172.21.2.254 &&
+                open5gs-smfd -c /open5gs/configs/smf.yaml"
+      volumes:
+      - ./config/smf.yaml:/open5gs/configs/smf.yaml
+      depends_on:
+        - open5gs-nrf
+      expose:
+      - "2123/udp"
+      - "80/tcp"
+      - "8805/udp"
+      networks:
+        open5gs:
+          ipv4_address: 172.21.0.107
+        gw1:
+          ipv4_address: 172.21.2.107
+  open5gs-pcf:
+      container_name: "open5gs-pcf"
+      image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
+      command: ["open5gs-pcfd", "-c", "/open5gs/configs/pcf.yaml"]
+      volumes:
+      - ./config/pcf.yaml:/open5gs/configs/pcf.yaml
+      expose:
+      - "80/tcp"
+      depends_on:
+      - mongodb
+      - open5gs-nrf
+      networks:
+        open5gs:
+          ipv4_address: 172.21.0.108
+  open5gs-nssf:
+      container_name: "open5gs-nssf"
+      image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
+      command: ["open5gs-nssfd", "-c", "/open5gs/configs/nssf.yaml"]
+      volumes:
+      - ./config/nssf.yaml:/open5gs/configs/nssf.yaml
+      depends_on:
+      - open5gs-nrf
+      expose:
+      - "80/tcp"
+      networks:
+        open5gs:
+          ipv4_address: 172.21.0.109
+  open5gs-upf:
+    container_name: "open5gs-upf"
+    image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    cap_drop:
+      - ALL
+    privileged: true
+    command: >
+      sh -c  "ip route add 172.21.2.0/24 via 172.21.3.254 &&
+              ip tuntap add name ogstun mode tun &&
+              ip addr add 10.45.0.1/16 dev ogstun &&
+              sysctl -w net.ipv6.conf.all.disable_ipv6=0 &&
+              ip link set ogstun up &&
+              echo 1 > /proc/sys/net/ipv4/ip_forward &&
+              iptables -t nat -A POSTROUTING -s 10.45.0.0/16 ! -o ogstun -j MASQUERADE &&
+              open5gs-upfd -c /open5gs/configs/upf.yaml"
+    volumes:
+      - ./config/upf.yaml:/open5gs/configs/upf.yaml
+    depends_on:
+      - open5gs-nrf
+    expose:
+      - "2152/udp"
+      - "8805/udp"
+    networks:
+      gw2:
+          ipv4_address: 172.21.3.110
+  ueransim-gnb-0:
+      image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+      tty: true
+      privileged: true
+      container_name: ueransim-gnb-0
+      command: >
+        sh -c "ip route add 172.21.2.0/24 via 172.21.1.254 && tail -f /dev/null"
+      volumes:
+        - ./config/oai-gnb-0.yaml:/UERANSIM/build/oai-gnb.yaml
+      depends_on:
+        - open5gs-upf
+        - open5gs-amf
+      networks:
+          ran:
+              ipv4_address: 172.21.1.111
+
+  ueransim-ue-0:
+      image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+      tty: true
+      privileged: true
+      container_name: ueransim-ue-0
+      volumes:
+      - ./config/oai-ue.yaml:/UERANSIM/build/oai-ue.yaml
+      depends_on:
+      - ueransim-gnb-0
+      networks:
+          ran:
+              ipv4_address: 172.21.1.112
+  ueransim-ue-1:
+      image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+      tty: true
+      privileged: true
+      container_name: ueransim-ue-1
+      volumes:
+      - ./config/oai-ue1.yaml:/UERANSIM/build/oai-ue.yaml
+      depends_on:
+      - ueransim-gnb-0
+      networks:
+          ran:
+              ipv4_address: 172.21.1.113
+  ueransim-ue-2:
+    image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+    tty: true
+    privileged: true
+    container_name: ueransim-ue-2
+    volumes:
+    - ./config/oai-ue2.yaml:/UERANSIM/build/oai-ue.yaml
+    depends_on:
+    - ueransim-gnb-0
+    networks:
+        ran:
+            ipv4_address: 172.21.1.114
+  ueransim-ue-3:
+      image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+      tty: true
+      privileged: true
+      container_name: ueransim-ue-3
+      volumes:
+      - ./config/oai-ue3.yaml:/UERANSIM/build/oai-ue.yaml
+      depends_on:
+      - ueransim-gnb-0
+      networks:
+          ran:
+              ipv4_address: 172.21.1.115
+  ueransim-ue-4:
+    image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+    tty: true
+    privileged: true
+    container_name: ueransim-ue-4
+    volumes:
+    - ./config/oai-ue4.yaml:/UERANSIM/build/oai-ue.yaml
+    depends_on:
+    - ueransim-gnb-0
+    networks:
+        ran:
+            ipv4_address: 172.21.1.116
+  ueransim-ue-5:
+      image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+      tty: true
+      privileged: true
+      container_name: ueransim-ue-5
+      volumes:
+      - ./config/oai-ue5.yaml:/UERANSIM/build/oai-ue.yaml
+      depends_on:
+      - ueransim-gnb-0
+      networks:
+          ran:
+              ipv4_address: 172.21.1.117
+  ueransim-ue-6:
+    image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+    tty: true
+    privileged: true
+    container_name: ueransim-ue-6
+    volumes:
+    - ./config/oai-ue6.yaml:/UERANSIM/build/oai-ue.yaml
+    depends_on:
+    - ueransim-gnb-0
+    networks:
+        ran:
+            ipv4_address: 172.21.1.118
+  ueransim-ue-7:
+      image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+      tty: true
+      privileged: true
+      container_name: ueransim-ue-7
+      volumes:
+      - ./config/oai-ue7.yaml:/UERANSIM/build/oai-ue.yaml
+      depends_on:
+      - ueransim-gnb-0
+      networks:
+          ran:
+              ipv4_address: 172.21.1.119
+  ueransim-ue-8:
+      image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+      tty: true
+      privileged: true
+      container_name: ueransim-ue-8
+      volumes:
+      - ./config/oai-ue8.yaml:/UERANSIM/build/oai-ue.yaml
+      depends_on:
+      - ueransim-gnb-0
+      networks:
+          ran:
+              ipv4_address: 172.21.1.120
+  ueransim-ue-9:
+      image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
+      tty: true
+      privileged: true
+      container_name: ueransim-ue-9
+      volumes:
+      - ./config/oai-ue9.yaml:/UERANSIM/build/oai-ue.yaml
+      depends_on:
+      - ueransim-gnb-0
+      networks:
+          ran:
+              ipv4_address: 172.21.1.121
+  mytb:
+    restart: always
+    image: "thingsboard/tb-postgres"
+    ports:
+      - "8081:9090"
+      - "7070:7070"
+      - "1883:1883"
+      - "5683-5688:5683-5688/udp"
+    environment:
+      TB_QUEUE_TYPE: in-memory
+    volumes:
+      - mytb-data:/data
+      - mytb-logs:/var/log/thingsboard
+    networks:
+        open5gs:
+            ipv4_address: 172.21.0.113
+  router:
+    image: ubuntu:latest
+    container_name: "router"
+    networks:
+      gw1:
+        ipv4_address: 172.21.2.254
+      gw2:
+        ipv4_address: 172.21.3.254
+      ran:
+        ipv4_address: 172.21.1.254
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    command: >
+      sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y iproute2 iptables &&
+            echo 1 > /proc/sys/net/ipv4/ip_forward &&
+            iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE &&
+            iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE &&
+            iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT &&
+            iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT &&
+            sleep infinity"

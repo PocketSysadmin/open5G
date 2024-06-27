@@ -1,0 +1,13 @@
+logger:
+    file: /var/log/open5gs/upf.log
+
+upf:
+    pfcp:
+       dev: eth0
+       addr: 172.21.3.110  # IP de la UPF en la red upf
+    gtpu:
+       dev: eth0
+       addr: 172.21.3.110  # IP de la UPF en la red upf
+    subnet:
+    - addr: 10.45.0.1/16
+      apn: internet

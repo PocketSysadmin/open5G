@@ -1,0 +1,35 @@
+logger:
+    file: /var/log/open5gs/smf.log
+
+parameter:
+    no_ipv6: true
+
+smf:
+    sbi:
+       dev: eth1
+       addr: 172.21.0.107  # IP del SMF en la red open5gs
+    gtpc:
+       dev: eth1
+       addr: 172.21.0.107  # IP del SMF en la red open5gs
+    gtpu:
+       dev: eth1
+       addr: 172.21.0.107  # IP del SMF en la red open5gs
+    pfcp:
+       dev: eth1
+       addr: 172.21.2.107  # IP del SMF en la red upf
+    subnet:
+    - addr: 10.45.0.1/16
+      apn: internet
+    dns:
+    - 8.8.8.8
+    - 8.8.4.4
+    mtu: 1400    
+
+nrf:
+  sbi:
+    - addr: 172.21.0.100  # IP del NRF en la red open5gs
+
+upf:
+  pfcp:
+    - addr: 172.21.3.110  # IP del UPF en la red upf
+      apn: internet
