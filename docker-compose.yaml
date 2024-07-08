@@ -38,6 +38,38 @@ networks:
       config:
         - subnet: 172.21.3.0/24
           gateway: 172.21.3.1
+  gw3:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.4.0/24
+          gateway: 172.21.4.1
+  gw4:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.5.0/24
+          gateway: 172.21.5.1
+  gw5:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.6.0/24
+          gateway: 172.21.6.1
+  gw6:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.7.0/24
+          gateway: 172.21.7.1
 services:
   mongodb:
     container_name: "mongodb"
@@ -52,6 +84,8 @@ services:
     networks:
       open5gs:
         ipv4_address: 172.21.0.101
+    dns:
+      - 8.8.8.8
   webui:
       image: registry.gitlab.com/infinitydon/registry/open5gs-webui:v2.2.6
       container_name: open5gs-webui
@@ -68,6 +102,8 @@ services:
       networks:
         open5gs:
           ipv4_address: 172.21.0.103
+      dns:
+        - 8.8.8.8
   open5gs-nrf:
       container_name: "open5gs-nrf"
       image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
@@ -79,12 +115,15 @@ services:
       networks:
         open5gs:
           ipv4_address: 172.21.0.100
+      dns:
+        - 8.8.8.8
   open5gs-amf:
       container_name: "open5gs-amf"
       image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
       privileged: true
       command: >
-        sh -c  "ip route add 172.21.1.0/24 via 172.21.2.254 &&
+        sh -c  "ip route del default &&
+                ip route add default via 172.21.2.254 &&
                 open5gs-amfd -c /open5gs/configs/amf.yaml"
       volumes:
       - ./config/amf.yaml:/open5gs/configs/amf.yaml
@@ -100,6 +139,8 @@ services:
           ipv4_address: 172.21.0.104
         gw1:
           ipv4_address: 172.21.2.104
+      dns:
+        - 8.8.8.8
   open5gs-udm:
       container_name: "open5gs-udm"
       image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
@@ -114,6 +155,8 @@ services:
       networks:
         open5gs:
           ipv4_address: 172.21.0.105
+      dns:
+        - 8.8.8.8
   open5gs-ausf:
       container_name: "open5gs-ausf"
       image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
@@ -128,6 +171,8 @@ services:
       networks:
         open5gs:
           ipv4_address: 172.21.0.114
+      dns:
+        - 8.8.8.8
   open5gs-udr:
       container_name: "open5gs-udr"
       image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
@@ -142,6 +187,8 @@ services:
       networks:
         open5gs:
           ipv4_address: 172.21.0.106
+      dns:
+        - 8.8.8.8
   open5gs-smf:
       container_name: "open5gs-smf"
       image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
@@ -149,7 +196,8 @@ services:
       - open5gs-nrf
       privileged: true
       command: >
-        sh -c  "ip route add 172.21.3.0/24 via 172.21.2.254 &&
+        sh -c  " ip route del default &&
+                ip route add default via 172.21.2.254 &&
                 open5gs-smfd -c /open5gs/configs/smf.yaml"
       volumes:
       - ./config/smf.yaml:/open5gs/configs/smf.yaml
@@ -164,6 +212,8 @@ services:
           ipv4_address: 172.21.0.107
         gw1:
           ipv4_address: 172.21.2.107
+      dns:
+        - 8.8.8.8
   open5gs-pcf:
       container_name: "open5gs-pcf"
       image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
@@ -178,6 +228,8 @@ services:
       networks:
         open5gs:
           ipv4_address: 172.21.0.108
+      dns:
+        - 8.8.8.8
   open5gs-nssf:
       container_name: "open5gs-nssf"
       image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
@@ -191,6 +243,8 @@ services:
       networks:
         open5gs:
           ipv4_address: 172.21.0.109
+      dns:
+        - 8.8.8.8
   open5gs-upf:
     container_name: "open5gs-upf"
     image: registry.gitlab.com/infinitydon/registry/open5gs-aio:v2.2.6
@@ -201,7 +255,8 @@ services:
       - ALL
     privileged: true
     command: >
-      sh -c  "ip route add 172.21.2.0/24 via 172.21.3.254 &&
+      sh -c  "ip route del default &&
+              ip route add default via 172.21.3.254 &&
               ip tuntap add name ogstun mode tun &&
               ip addr add 10.45.0.1/16 dev ogstun &&
               sysctl -w net.ipv6.conf.all.disable_ipv6=0 &&
@@ -219,13 +274,17 @@ services:
     networks:
       gw2:
           ipv4_address: 172.21.3.110
+    dns:
+      - 8.8.8.8
   ueransim-gnb-0:
       image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
       tty: true
       privileged: true
       container_name: ueransim-gnb-0
       command: >
-        sh -c "ip route add 172.21.2.0/24 via 172.21.1.254 && tail -f /dev/null"
+        sh -c " ip route del default &&
+                ip route add 0.0.0.0/0 via 172.21.1.254 &&
+                tail -f /dev/null"
       volumes:
         - ./config/oai-gnb-0.yaml:/UERANSIM/build/oai-gnb.yaml
       depends_on:
@@ -234,6 +293,9 @@ services:
       networks:
           ran:
               ipv4_address: 172.21.1.111
+      dns:
+        - 172.21.5.5
+        - 8.8.4.4
 
   ueransim-ue-0:
       image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
@@ -247,6 +309,9 @@ services:
       networks:
           ran:
               ipv4_address: 172.21.1.112
+      dns:
+        - 172.21.5.5
+        - 8.8.4.4
   ueransim-ue-1:
       image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
       tty: true
@@ -259,6 +324,9 @@ services:
       networks:
           ran:
               ipv4_address: 172.21.1.113
+      dns:
+        - 172.21.5.5
+        - 8.8.4.4
   ueransim-ue-2:
     image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
     tty: true
@@ -271,6 +339,9 @@ services:
     networks:
         ran:
             ipv4_address: 172.21.1.114
+    dns:
+      - 172.21.5.5
+      - 8.8.4.4
   ueransim-ue-3:
       image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
       tty: true
@@ -283,6 +354,9 @@ services:
       networks:
           ran:
               ipv4_address: 172.21.1.115
+      dns:
+        - 172.21.5.5
+        - 8.8.4.4
   ueransim-ue-4:
     image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
     tty: true
@@ -307,6 +381,9 @@ services:
       networks:
           ran:
               ipv4_address: 172.21.1.117
+      dns:
+        - 172.21.5.5
+        - 8.8.4.4
   ueransim-ue-6:
     image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
     tty: true
@@ -319,6 +396,9 @@ services:
     networks:
         ran:
             ipv4_address: 172.21.1.118
+    dns:
+        - 172.21.5.5
+        - 8.8.4.4
   ueransim-ue-7:
       image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
       tty: true
@@ -331,6 +411,9 @@ services:
       networks:
           ran:
               ipv4_address: 172.21.1.119
+      dns:
+        - 172.21.5.5
+        - 8.8.4.4
   ueransim-ue-8:
       image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
       tty: true
@@ -343,6 +426,9 @@ services:
       networks:
           ran:
               ipv4_address: 172.21.1.120
+      dns:
+        - 172.21.5.5
+        - 8.8.4.4
   ueransim-ue-9:
       image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
       tty: true
@@ -355,6 +441,9 @@ services:
       networks:
           ran:
               ipv4_address: 172.21.1.121
+      dns:
+        - 172.21.5.5
+        - 8.8.4.4
   mytb:
     restart: always
     image: "thingsboard/tb-postgres"
@@ -381,6 +470,46 @@ services:
         ipv4_address: 172.21.3.254
       ran:
         ipv4_address: 172.21.1.254
+      gw3:
+        ipv4_address: 172.21.4.254
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    command: >
+      sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y iproute2 iptables &&
+            echo 1 > /proc/sys/net/ipv4/ip_forward &&
+            iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE &&
+            iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE &&
+            iptables -t nat -A POSTROUTING -o eth2 -j MASQUERADE &&
+            iptables -t nat -A POSTROUTING -o eth3 -j MASQUERADE &&
+            iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT &&
+            iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT &&
+            iptables -A FORWARD -i eth0 -o eth2 -j ACCEPT &&
+            iptables -A FORWARD -i eth2 -o eth0 -j ACCEPT &&
+            iptables -A FORWARD -i eth0 -o eth3 -j ACCEPT &&
+            iptables -A FORWARD -i eth3 -o eth0 -j ACCEPT &&
+            iptables -A FORWARD -i eth1 -o eth2 -j ACCEPT &&
+            iptables -A FORWARD -i eth2 -o eth1 -j ACCEPT &&
+            iptables -A FORWARD -i eth1 -o eth3 -j ACCEPT &&
+            iptables -A FORWARD -i eth3 -o eth1 -j ACCEPT &&
+            iptables -A FORWARD -i eth2 -o eth3 -j ACCEPT &&
+            iptables -A FORWARD -i eth3 -o eth2 -j ACCEPT &&
+            ip route del default &&
+            ip route add 0.0.0.0/0 via 172.21.4.253 &&
+            sleep infinity"
+  routerDNS:
+    image: ubuntu:latest
+    container_name: "routerDNS"
+    networks:
+      gw3:
+        ipv4_address: 172.21.4.253
+      gw4:
+        ipv4_address: 172.21.5.253
+      gw5:
+        ipv4_address: 172.21.6.253
     cap_add:
       - NET_ADMIN
     privileged: true
@@ -391,4 +520,61 @@ services:
             iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE &&
             iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT &&
             iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT &&
+            ip route del default &&
+            ip route add 172.21.1.0/24 via 172.21.4.254 &&
+            ip route add 172.21.2.0/24 via 172.21.4.254 &&
+            ip route add 172.21.3.0/24 via 172.21.4.254 &&
+            ip route add 0.0.0.0/0 via 172.21.6.252  &&
             sleep infinity"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+  dnsserver:
+    image: internetsystemsconsortium/bind9:9.18
+    container_name: "dnsserver"
+    networks:
+      gw4:
+        ipv4_address: 172.21.5.5
+    volumes:
+      - ./dns:/etc/bind
+      - ./dns/var/cache/bind:/var/cache/bind
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    privileged: true
+    command: >
+      sh -c " ip route del default &&
+              ip route add 0.0.0.0/0 via 172.21.5.253  &&
+              named -g -c /etc/bind/named.conf"
+    dns:
+    - 172.21.5.5
+  
+  routerGW:
+    image: ubuntu:latest
+    container_name: routerGW
+    networks:
+      gw5:
+        ipv4_address: 172.21.6.252
+      gw6:
+        ipv4_address: 172.21.7.252
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    command: >
+      sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y iproute2 iptables &&
+            echo 1 > /proc/sys/net/ipv4/ip_forward &&
+            iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE &&
+            iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE &&
+            iptables -A FORWARD -i eth0 -o eth1 -j ACCEPT &&
+            iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT &&
+            ip route del default &&
+            ip route add 172.21.1.0/24 via 172.21.6.253 &&
+            ip route add 172.21.2.0/24 via 172.21.6.253 &&
+            ip route add 172.21.3.0/24 via 172.21.6.253 &&
+            ip route add 172.21.4.0/24 via 172.21.6.253 &&
+            ip route add 172.21.5.0/24 via 172.21.6.253 &&
+            ip route add 0.0.0.0/0 via 172.21.7.1 &&
+            sleep infinity"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4

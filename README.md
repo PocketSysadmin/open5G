@@ -1,9 +1,10 @@
-This is a basic test that shows iot traffic via ueransim and open5gs.
 
-Run the following commands before starting docker-compose:
+# Open5GS- UERANSIM-CRAAX for Horse
 
-mkdir -p ~/.mytb-data && sudo chown -R 799:799 ~/.mytb-data
+## Execution Instructions:
 
-mkdir -p ~/.mytb-logs && sudo chown -R 799:799 ~/.mytb-logs
+docker-compose up -d
 
-Refer to the thingsboard documentation for more info about running the IOT
+python3 ./scripts/create_users.py
+
+python3 ./scripts/execute_gnb_ue.py
