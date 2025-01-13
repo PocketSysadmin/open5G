@@ -152,6 +152,7 @@ services:
       depends_on:
       - open5gs-nrf
       - open5gs-udr
+      restart: always
       networks:
         open5gs:
           ipv4_address: 172.21.0.105
@@ -201,8 +202,8 @@ services:
                 open5gs-smfd -c /open5gs/configs/smf.yaml"
       volumes:
       - ./config/smf.yaml:/open5gs/configs/smf.yaml
-      depends_on:
-        - open5gs-nrf
+      # depends_on:
+      #   - open5gs-nrf
       expose:
       - "2123/udp"
       - "80/tcp"
@@ -225,6 +226,7 @@ services:
       depends_on:
       - mongodb
       - open5gs-nrf
+      restart: always
       networks:
         open5gs:
           ipv4_address: 172.21.0.108
@@ -263,9 +265,15 @@ services:
               ip link set ogstun up &&
               echo 1 > /proc/sys/net/ipv4/ip_forward &&
               iptables -t nat -A POSTROUTING -s 10.45.0.0/16 ! -o ogstun -j MASQUERADE &&
+              apt-get update && apt-get install tcpdump -y &&
+              mkdir -p /packet-capture &&
+              chown tcpdump:tcpdump /packet-capture &&
+              chmod 777 /packet-capture &&
+              ./open5gs/scripts/scan_all.sh &
               open5gs-upfd -c /open5gs/configs/upf.yaml"
     volumes:
       - ./config/upf.yaml:/open5gs/configs/upf.yaml
+      - ./scripts/scan_all.sh:/open5gs/scripts/scan_all.sh
     depends_on:
       - open5gs-nrf
     expose:
@@ -284,9 +292,15 @@ services:
       command: >
         sh -c " ip route del default &&
                 ip route add 0.0.0.0/0 via 172.21.1.254 &&
+                apt-get update && 
+                apt-get install tcpdump -y &&
+                mkdir -p /packet-capture &&
+                chmod 777 /packet-capture &&
+                /scripts/scan_all.sh &&
                 tail -f /dev/null"
       volumes:
         - ./config/oai-gnb-0.yaml:/UERANSIM/build/oai-gnb.yaml
+        - ./scripts/scan_all.sh:/scripts/scan_all.sh
       depends_on:
         - open5gs-upf
         - open5gs-amf
@@ -304,14 +318,22 @@ services:
       container_name: ueransim-ue-0
       volumes:
       - ./config/oai-ue.yaml:/UERANSIM/build/oai-ue.yaml
+      - ./scripts/scan_all.sh:/scripts/scan_all.sh
       depends_on:
       - ueransim-gnb-0
       networks:
           ran:
               ipv4_address: 172.21.1.112
+      command: >
+        sh -c "apt-get update && apt-get install ffmpeg -y && 
+              apt-get install tcpdump -y &&
+              mkdir -p /packet-capture &&
+              chmod 777 /packet-capture &&
+              /scripts/scan_all.sh &&
+              tail -f /dev/null"
       dns:
         - 172.21.5.5
-        - 8.8.4.4
+        - 8.8.4.4        
   ueransim-ue-1:
       image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
       tty: true
@@ -319,11 +341,19 @@ services:
       container_name: ueransim-ue-1
       volumes:
       - ./config/oai-ue1.yaml:/UERANSIM/build/oai-ue.yaml
+      - ./scripts/scan_all.sh:/scripts/scan_all.sh
       depends_on:
       - ueransim-gnb-0
       networks:
           ran:
               ipv4_address: 172.21.1.113
+      command: >
+        sh -c "apt-get update && apt-get install ffmpeg -y && 
+              apt-get install tcpdump -y &&
+              mkdir -p /packet-capture &&
+              chmod 777 /packet-capture &&
+              /scripts/scan_all.sh &&
+        tail -f /dev/null"
       dns:
         - 172.21.5.5
         - 8.8.4.4
@@ -334,11 +364,19 @@ services:
     container_name: ueransim-ue-2
     volumes:
     - ./config/oai-ue2.yaml:/UERANSIM/build/oai-ue.yaml
+    - ./scripts/scan_all.sh:/scripts/scan_all.sh
     depends_on:
     - ueransim-gnb-0
     networks:
         ran:
             ipv4_address: 172.21.1.114
+    command: >
+      sh -c "apt-get update && apt-get install ffmpeg -y 
+            apt-get install tcpdump -y &&
+            mkdir -p /packet-capture &&
+            chmod 777 /packet-capture &&
+            /scripts/scan_all.sh
+      && tail -f /dev/null"
     dns:
       - 172.21.5.5
       - 8.8.4.4
@@ -349,11 +387,19 @@ services:
       container_name: ueransim-ue-3
       volumes:
       - ./config/oai-ue3.yaml:/UERANSIM/build/oai-ue.yaml
+      - ./scripts/scan_all.sh:/scripts/scan_all.sh
       depends_on:
       - ueransim-gnb-0
       networks:
           ran:
               ipv4_address: 172.21.1.115
+      command: > 
+        sh -c "apt-get update && 
+              apt-get install tcpdump -y &&
+              mkdir -p /packet-capture &&
+              chmod 777 /packet-capture &&
+              /scripts/scan_all.sh &&
+              tail -f /dev/null"
       dns:
         - 172.21.5.5
         - 8.8.4.4
@@ -364,11 +410,22 @@ services:
     container_name: ueransim-ue-4
     volumes:
     - ./config/oai-ue4.yaml:/UERANSIM/build/oai-ue.yaml
+    - ./scripts/scan_all.sh:/scripts/scan_all.sh
     depends_on:
     - ueransim-gnb-0
     networks:
         ran:
             ipv4_address: 172.21.1.116
+    command: > 
+      sh -c "apt-get update && 
+            apt-get install tcpdump -y &&
+            mkdir -p /packet-capture &&
+            chmod 777 /packet-capture &&
+            /scripts/scan_all.sh &&
+            tail -f /dev/null"
+    dns: 
+      - 172.21.5.5
+      - 8.8.4.4
   ueransim-ue-5:
       image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
       tty: true
@@ -376,11 +433,19 @@ services:
       container_name: ueransim-ue-5
       volumes:
       - ./config/oai-ue5.yaml:/UERANSIM/build/oai-ue.yaml
+      - ./scripts/scan_all.sh:/scripts/scan_all.sh
       depends_on:
       - ueransim-gnb-0
       networks:
           ran:
               ipv4_address: 172.21.1.117
+      command: >
+        sh -c "apt-get update && 
+              apt-get install tcpdump -y &&
+              mkdir -p /packet-capture &&
+              chmod 777 /packet-capture &&
+              /scripts/scan_all.sh &&
+              tail -f /dev/null"
       dns:
         - 172.21.5.5
         - 8.8.4.4
@@ -391,11 +456,19 @@ services:
     container_name: ueransim-ue-6
     volumes:
     - ./config/oai-ue6.yaml:/UERANSIM/build/oai-ue.yaml
+    - ./scripts/scan_all.sh:/scripts/scan_all.sh
     depends_on:
     - ueransim-gnb-0
     networks:
         ran:
             ipv4_address: 172.21.1.118
+    command: > 
+      sh -c "apt-get update && 
+            apt-get install tcpdump -y &&
+            mkdir -p /packet-capture &&
+            chmod 777 /packet-capture &&
+            /scripts/scan_all.sh &&
+            tail -f /dev/null"
     dns:
         - 172.21.5.5
         - 8.8.4.4
@@ -406,11 +479,19 @@ services:
       container_name: ueransim-ue-7
       volumes:
       - ./config/oai-ue7.yaml:/UERANSIM/build/oai-ue.yaml
+      - ./scripts/scan_all.sh:/scripts/scan_all.sh
       depends_on:
       - ueransim-gnb-0
       networks:
           ran:
               ipv4_address: 172.21.1.119
+      command: >
+        sh -c "apt-get update && 
+              apt-get install tcpdump -y &&
+              mkdir -p /packet-capture &&
+              chmod 777 /packet-capture &&
+              /scripts/scan_all.sh &&
+              tail -f /dev/null"
       dns:
         - 172.21.5.5
         - 8.8.4.4
@@ -421,11 +502,19 @@ services:
       container_name: ueransim-ue-8
       volumes:
       - ./config/oai-ue8.yaml:/UERANSIM/build/oai-ue.yaml
+      - ./scripts/scan_all.sh:/scripts/scan_all.sh
       depends_on:
       - ueransim-gnb-0
       networks:
           ran:
               ipv4_address: 172.21.1.120
+      command: >
+        sh -c "apt-get update && 
+              apt-get install tcpdump -y &&
+              mkdir -p /packet-capture &&
+              chmod 777 /packet-capture &&
+              /scripts/scan_all.sh &&
+              tail -f /dev/null"
       dns:
         - 172.21.5.5
         - 8.8.4.4
@@ -436,11 +525,19 @@ services:
       container_name: ueransim-ue-9
       volumes:
       - ./config/oai-ue9.yaml:/UERANSIM/build/oai-ue.yaml
+      - ./scripts/scan_all.sh:/scripts/scan_all.sh
       depends_on:
       - ueransim-gnb-0
       networks:
           ran:
               ipv4_address: 172.21.1.121
+      command: >
+        sh -c "apt-get update && 
+              apt-get install tcpdump -y &&
+              mkdir -p /packet-capture &&
+              chmod 777 /packet-capture &&
+              /scripts/scan_all.sh &&
+              tail -f /dev/null"
       dns:
         - 172.21.5.5
         - 8.8.4.4
@@ -499,6 +596,7 @@ services:
             iptables -A FORWARD -i eth3 -o eth2 -j ACCEPT &&
             ip route del default &&
             ip route add 0.0.0.0/0 via 172.21.4.253 &&
+            apt-get install tcpdump -y &&
             sleep infinity"
   routerDNS:
     image: ubuntu:latest
@@ -525,12 +623,14 @@ services:
             ip route add 172.21.2.0/24 via 172.21.4.254 &&
             ip route add 172.21.3.0/24 via 172.21.4.254 &&
             ip route add 0.0.0.0/0 via 172.21.6.252  &&
+            apt-get update && apt-get install tcpdump -y &&
+            mkdir -p /packet-capture &&
             sleep infinity"
     dns:
       - 8.8.8.8
       - 8.8.4.4
   dnsserver:
-    image: internetsystemsconsortium/bind9:9.18
+    image: ubuntu/bind9:9.18-22.04_edge
     container_name: "dnsserver"
     networks:
       gw4:
@@ -538,16 +638,24 @@ services:
     volumes:
       - ./dns:/etc/bind
       - ./dns/var/cache/bind:/var/cache/bind
+      - ./scripts/scan_all.sh:/scripts/scan_all.sh
     ports:
       - "53:53/udp"
       - "53:53/tcp"
     privileged: true
     command: >
-      sh -c " ip route del default &&
+      sh -c " apt-get update && 
+              apt-get install tcpdump -y &&
+              mkdir -p /packet-capture &&
+              chmod 777 /packet-capture &&
+              chown tcpdump:tcpdump /packet-capture &&
+              /scripts/scan_all.sh &
+              ip route del default &&
               ip route add 0.0.0.0/0 via 172.21.5.253  &&
               named -g -c /etc/bind/named.conf"
     dns:
     - 172.21.5.5
+    - 8.8.8.8
   
   routerGW:
     image: ubuntu:latest
@@ -560,6 +668,8 @@ services:
     cap_add:
       - NET_ADMIN
     privileged: true
+    volumes:
+      - ./scripts/scan_all.sh:/scripts/scan_all.sh
     command: >
       sh -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y iproute2 iptables &&
             echo 1 > /proc/sys/net/ipv4/ip_forward &&
@@ -574,7 +684,26 @@ services:
             ip route add 172.21.4.0/24 via 172.21.6.253 &&
             ip route add 172.21.5.0/24 via 172.21.6.253 &&
             ip route add 0.0.0.0/0 via 172.21.7.1 &&
+            apt-get update && apt-get install tcpdump -y &&
+            mkdir -p /packet-capture &&
+            chmod 777 /packet-capture &&
+            /scripts/scan_all.sh &&
             sleep infinity"
     dns:
       - 8.8.8.8
       - 8.8.4.4
+  ffmpeg:
+    build:
+      context: ./video
+      dockerfile: Dockerfile
+    container_name: ffmpeg
+    ports:
+      - "8080:8080"
+      - "8083:8083"
+      - "8082:8082"
+    volumes:
+      - ./video:/video
+    tty: true 
+    dns:
+    - 8.8.8.8
+    - 8.8.4.4
