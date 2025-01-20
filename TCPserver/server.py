@@ -15,8 +15,16 @@ def execute_traffigen_media(tim, client_socket):
         client_socket.sendall(f"Error executing the script: media.sh: {e}\n".encode())
 
 # Here you need to add the function to execute the web script
+#def execute_traffigen_web(tim, client_socket):
+#    pass
 def execute_traffigen_web(tim, client_socket):
-    pass
+    try:
+#        resultado = subprocess.check_output(['python3', '../scripts/web_traffic.py', tim], text=True)
+        resultado = subprocess.check_output([f'../scripts/web.sh', tim], text=True)
+        client_socket.sendall(f"Result:\n{resultado}\n".encode())
+    except subprocess.CalledProcessError as e:
+#        client_socket.sendall(f"Error executing the script: web_traffic.py: {e}\n".encode())
+        client_socket.sendall(f"Error executing the script: web.sh: {e}\n".encode())
 
 def manejar_cliente(client_socket, client_address):
     try:
@@ -44,10 +52,17 @@ def manejar_cliente(client_socket, client_address):
                     traffigen_media_thread = threading.Thread(target=execute_traffigen_media, args=(tim, client_socket))
                     traffigen_media_thread.start()
 
-                elif script_type == 'web':  #Here you need to add the code to execute the web script
+#                elif script_type == 'web':  #Here you need to add the code to execute the web script
                    
-                    pass
+#                    pass
+                elif script_type == 'web' and len(partes) == 3 and partes[2].isdigit():
+                    tim = partes[2]
 
+#                    client_socket.sendall(f"Executing the script {script_type}.py with time {tim}...".encode())
+                    client_socket.sendall(f"Executing the script {script_type}.sh with time {tim}...".encode())
+
+                    traffigen_web_thread = threading.Thread(target=execute_traffigen_web, args=(tim, client_socket))
+                    traffigen_web_thread.start()
                 else:
                     client_socket.sendall(f"Invalid command format for 'trafgen'. Check the help for valid options.\n".encode())
 
@@ -56,6 +71,9 @@ def manejar_cliente(client_socket, client_address):
                 help_message = (
                     "Help:\n"
                     "trafgen media <time> - Execute the traffigen media script in ue-0, ue-1, ue-2\n"
+                    
+                    "trafgen web <time> - Execute the traffigen media script in ue-3\n"
+                    
                 )
                 client_socket.sendall(help_message.encode())
     finally:

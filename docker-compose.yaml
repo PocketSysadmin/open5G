@@ -73,7 +73,7 @@ networks:
 services:
   mongodb:
     container_name: "mongodb"
-    image: mongo:5
+    image: mongo:4.4
     expose:
     - "27017/tcp"
     ports:
@@ -388,6 +388,8 @@ services:
       volumes:
       - ./config/oai-ue3.yaml:/UERANSIM/build/oai-ue.yaml
       - ./scripts/scan_all.sh:/scripts/scan_all.sh
+      - ./scripts/web_traffic.py:/scripts/web_traffic.py
+      
       depends_on:
       - ueransim-gnb-0
       networks:
@@ -395,7 +397,26 @@ services:
               ipv4_address: 172.21.1.115
       command: > 
         sh -c "apt-get update && 
-              apt-get install tcpdump -y &&
+              apt-get install -y \
+                  software-properties-common \
+                  wget \
+                  tcpdump \
+                  nano && 
+              add-apt-repository -y ppa:deadsnakes/ppa && 
+              apt-get update && 
+              apt-get install -y \
+                  python3.8 \
+                  python3.8-venv \
+                  python3.8-distutils \
+                  python3-pip && 
+              update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 && 
+              update-alternatives --set python3 /usr/bin/python3.8 && 
+              python3 --version && 
+              pip3 --version && 
+              wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && 
+              apt install -y ./google-chrome-stable_current_amd64.deb && 
+              rm -f google-chrome-stable_current_amd64.deb && 
+              pip3 install selenium webdriver-manager && 
               mkdir -p /packet-capture &&
               chmod 777 /packet-capture &&
               /scripts/scan_all.sh &&
@@ -403,26 +424,47 @@ services:
       dns:
         - 172.21.5.5
         - 8.8.4.4
+
   ueransim-ue-4:
     image: registry.gitlab.com/infinitydon/registry/ueransim:v3.1.9
     tty: true
     privileged: true
     container_name: ueransim-ue-4
     volumes:
-    - ./config/oai-ue4.yaml:/UERANSIM/build/oai-ue.yaml
-    - ./scripts/scan_all.sh:/scripts/scan_all.sh
+      - ./config/oai-ue3.yaml:/UERANSIM/build/oai-ue.yaml
+      - ./scripts/scan_all.sh:/scripts/scan_all.sh
+      - ./scripts/web_traffic.py:/scripts/web_traffic.py
     depends_on:
     - ueransim-gnb-0
     networks:
         ran:
             ipv4_address: 172.21.1.116
     command: > 
-      sh -c "apt-get update && 
-            apt-get install tcpdump -y &&
-            mkdir -p /packet-capture &&
-            chmod 777 /packet-capture &&
-            /scripts/scan_all.sh &&
-            tail -f /dev/null"
+        sh -c "apt-get update && 
+              apt-get install -y \
+                  software-properties-common \
+                  wget \
+                  tcpdump \
+                  nano && 
+              add-apt-repository -y ppa:deadsnakes/ppa && 
+              apt-get update && 
+              apt-get install -y \
+                  python3.8 \
+                  python3.8-venv \
+                  python3.8-distutils \
+                  python3-pip && 
+              update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 && 
+              update-alternatives --set python3 /usr/bin/python3.8 && 
+              python3 --version && 
+              pip3 --version && 
+              wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && 
+              apt install -y ./google-chrome-stable_current_amd64.deb && 
+              rm -f google-chrome-stable_current_amd64.deb && 
+              pip3 install selenium webdriver-manager && 
+              mkdir -p /packet-capture &&
+              chmod 777 /packet-capture &&
+              /scripts/scan_all.sh &&
+              tail -f /dev/null"
     dns: 
       - 172.21.5.5
       - 8.8.4.4
@@ -434,6 +476,7 @@ services:
       volumes:
       - ./config/oai-ue5.yaml:/UERANSIM/build/oai-ue.yaml
       - ./scripts/scan_all.sh:/scripts/scan_all.sh
+      - ./scripts/web_traffic.py:/scripts/web_traffic.py      
       depends_on:
       - ueransim-gnb-0
       networks:
@@ -441,7 +484,26 @@ services:
               ipv4_address: 172.21.1.117
       command: >
         sh -c "apt-get update && 
-              apt-get install tcpdump -y &&
+              apt-get install -y \
+                  software-properties-common \
+                  wget \
+                  tcpdump \
+                  nano && 
+              add-apt-repository -y ppa:deadsnakes/ppa && 
+              apt-get update && 
+              apt-get install -y \
+                  python3.8 \
+                  python3.8-venv \
+                  python3.8-distutils \
+                  python3-pip && 
+              update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1 && 
+              update-alternatives --set python3 /usr/bin/python3.8 && 
+              python3 --version && 
+              pip3 --version && 
+              wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && 
+              apt install -y ./google-chrome-stable_current_amd64.deb && 
+              rm -f google-chrome-stable_current_amd64.deb && 
+              pip3 install selenium webdriver-manager && 
               mkdir -p /packet-capture &&
               chmod 777 /packet-capture &&
               /scripts/scan_all.sh &&
@@ -640,8 +702,8 @@ services:
       - ./dns/var/cache/bind:/var/cache/bind
       - ./scripts/scan_all.sh:/scripts/scan_all.sh
     ports:
-      - "53:53/udp"
-      - "53:53/tcp"
+      - "5300:53/udp"
+      - "5300:53/tcp"
     privileged: true
     command: >
       sh -c " apt-get update && 
