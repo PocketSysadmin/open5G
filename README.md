@@ -1,4 +1,4 @@
-# Open5GS-UERANSIM-CRAAX for Horse
+# Open5GS-UERANSIM-CRAAX 
 
 ## Execution Instructions:
 
